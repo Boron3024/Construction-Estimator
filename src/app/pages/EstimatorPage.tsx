@@ -69,6 +69,7 @@ export function EstimatorPage() {
   const [useCustomSection, setUseCustomSection] = useState(false);
   const [customSectionCode, setCustomSectionCode] = useState('');
   const [customSectionTitle, setCustomSectionTitle] = useState('');
+  const [editedSectionTitle, setEditedSectionTitle] = useState('');
   const [selectedItemId, setSelectedItemId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [adjustedRate, setAdjustedRate] = useState('');
@@ -140,6 +141,7 @@ const allProjectTypes = [
     setUseCustomSection(false);
     setCustomSectionCode('');
     setCustomSectionTitle('');
+    setEditedSectionTitle('');
     setSelectedItemId('');
     setAdjustedRate('');
     clearItems();
@@ -147,19 +149,24 @@ const allProjectTypes = [
   };
 
   const handleSectionChange = (v: string) => {
-    if (v === NEW_SECTION_SENTINEL) {
-      setUseCustomSection(true);
-      setSelectedSection('');
-      setCustomSectionCode('');
-      setCustomSectionTitle('');
-    } else {
-      setUseCustomSection(false);
-      setSelectedSection(v);
-    }
-    setSelectedItemId('');
-    setAdjustedRate('');
-  };
+  if (v === NEW_SECTION_SENTINEL) {
+    setUseCustomSection(true);
+    setSelectedSection('');
+    setCustomSectionCode('');
+    setCustomSectionTitle('');
+    setEditedSectionTitle('');
+  } else {
+    setUseCustomSection(false);
+    setSelectedSection(v);
 
+    const sec = BOQ_SECTIONS[sector].find(s => s.code === v);
+    setEditedSectionTitle(sec?.title || '');
+  }
+
+
+  setSelectedItemId('');
+  setAdjustedRate('');
+};
   const resolvedSectionCode = (): string => {
     if (useCustomSection) return customSectionCode.toUpperCase() || 'X';
     return selectedSection && selectedSection !== 'all' ? selectedSection : 'A';
@@ -543,33 +550,7 @@ setCustomProjectTypes(prev => ({
             <CardContent className="pt-4">
               <form onSubmit={handleAddItem} className="space-y-3">
                 {/* Category Tabs */}
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Category</Label>
-                  <div className="flex rounded-lg border overflow-hidden">
-                    {CATEGORY_TABS.map(({ key, label, icon: Icon }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => {
-                          setCategory(key);
-                          setSelectedItemId('');
-                          setSelectedSection('');
-                          setUseCustomSection(false);
-                          setCustomSectionCode('');
-                          setCustomSectionTitle('');
-                          setAdjustedRate('');
-                          setIsCustom(false);
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
-                          category === key ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
-                        }`}
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              
 
                 {/* Custom Item Toggle */}
                 <div className="flex items-center justify-between">
@@ -584,10 +565,10 @@ setCustomProjectTypes(prev => ({
                 </div>
 
                 {/* BoQ Section — shown for materials in both modes */}
-                {category === 'materials' && (
+              
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label>BoQ Section</Label>
+                      <Label>Work Section</Label>
                       {useCustomSection && (
                         <button
                           type="button"
@@ -605,7 +586,7 @@ setCustomProjectTypes(prev => ({
                         onValueChange={handleSectionChange}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="All sections" />
+                          <SelectValue placeholder="Select Work sections" />
                         </SelectTrigger>
                         <SelectContent>
                           {!isCustom && <SelectItem value="all">All Sections</SelectItem>}
@@ -615,7 +596,7 @@ setCustomProjectTypes(prev => ({
                           <SelectItem value={NEW_SECTION_SENTINEL}>
                             <span className="flex items-center gap-1.5 text-teal-600 font-medium">
                               <PlusCircle className="h-3.5 w-3.5" />
-                              Add new section…
+                              Add new Work section…
                             </span>
                           </SelectItem>
                         </SelectContent>
@@ -647,7 +628,7 @@ setCustomProjectTypes(prev => ({
                       </div>
                     )}
                   </div>
-                )}
+                
 
                 {!isCustom ? (
                   <>
