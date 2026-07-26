@@ -153,7 +153,7 @@ export function Layout() {
           🇰🇪 Kenyan Construction Market Rates
         </p>
         <p className="text-slate-600" style={{ fontSize: '10px' }}>
-          March 2026 • KES • VAT 16%
+          © 2026 Construction Estimator System | Developed by Brian Rono. All rights reserved.
         </p>
       </div>
     </div>
