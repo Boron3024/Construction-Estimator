@@ -47,12 +47,44 @@ export const LABOR_SECTION_TITLE: Record<SectorType, string> = {
   roads: 'I. Labour',
   wash: 'G. Labour',
 };
+export interface LaborSubSection{
+  code: string;
+  title: string;
+}
+export const LaborSubSections:LaborSubSection[]= [
+  { code: 'Erath', title: 'Earthworks' },
+  { code: 'Concrete', title: 'Concrete Works' },
+  { code: 'Masonry', title: 'Masonry' },
+  { code: 'Roof', title: 'Roofing & Carpentry' },
+  { code: 'Finish', title: 'Finishes' },
+  { code: 'Plumbing', title: 'Plumbing & Drainage' },
+  { code: 'Electrical', title: 'Electrical Works' },
+  { code: 'Road', title: 'Road works' },
+  {code:  'Pipe', title: 'Pipeline Installation'},
+  {code: 'Supervision', title: 'Management & Supervision'},
+];
 
 export const EQUIPMENT_SECTION_TITLE: Record<SectorType, string> = {
   building: 'K. Equipment & Plant Hire',
   roads: 'J. Equipment & Plant Hire',
   wash: 'H. Equipment & Plant Hire',
 };
+export interface EquipmentSubSection{
+  code: string;
+  title: string;
+}
+export const EquipmentSubSections:EquipmentSubSection[]= [
+  { code: 'Earth', title: 'Earthmoving Equipments' },
+  { code: 'Survey', title: 'Survey Equipment' },
+  { code: 'Road', title: 'Road Construction Equipment' },
+  { code: 'Lifting', title: 'Lifting & Handling Equipment' },
+  { code: 'Compaction', title: 'Compaction Equipment' },
+  { code: 'Concrete', title: 'Concrete Equipment' },
+  { code: 'Electrical', title: 'Electrical Equipment' },
+  { code: 'General', title: 'General Equipment' },
+  {code:  'Pipe', title: 'Pipeline Installation Equipment'},
+
+];
 
 export interface RateItem {
   id: string;
@@ -66,6 +98,7 @@ export interface RateItem {
   quantityHint?: string;
   minQty?: number;
   maxQty?: number;
+  subSection?: string; // Optional sub-section code for labor/equipment items
 }
 
 export const RATE_DATABASE: RateItem[] = [
@@ -338,3 +371,22 @@ export const getSectionTitle = (sector: SectorType, code: string): string => {
   const section = BOQ_SECTIONS[sector]?.find(s => s.code === code);
   return section ? `${code}. ${section.title}` : code;
 };
+export const getLaborBySection = (
+  sector: SectorType, 
+  sectionCode: string
+): RateItem[] =>
+  RATE_DATABASE.filter(item =>
+    item.sectors.includes(sector) &&
+    item.category === 'labor' &&
+    item.defaultSection === sectionCode
+  );
+
+export const getEquipmentBySection = (
+  sector: SectorType, 
+  sectionCode: string
+): RateItem[] =>
+  RATE_DATABASE.filter(item =>
+    item.sectors.includes(sector) &&
+    item.category === 'equipment' &&
+    item.defaultSection === sectionCode
+  ); 

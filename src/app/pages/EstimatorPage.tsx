@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Plus,
   Trash2,
@@ -78,8 +78,38 @@ export function EstimatorPage() {
   const [customUnit, setCustomUnit] = useState('');
   const [customRate, setCustomRate] = useState('');
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  
+  const NEW_PROJECT_TYPE = "-- New Project Type --";
 
-  const sector = currentProject.sector;
+const [useCustomProjectType, setUseCustomProjectType] = useState(false);
+
+const [customProjectType, setCustomProjectType] = useState("");
+
+const [customProjectTypes, setCustomProjectTypes] = useState<
+  Record<SectorType, string[]>
+>(() => {
+  const saved = localStorage.getItem("customProjectTypes");
+  if (saved) {
+    return JSON.parse(saved);
+  }
+  return {
+    building: [],
+    roads: [],
+    wash: [],
+  };
+});
+useEffect(() => {
+  localStorage.setItem(
+    "customProjectTypes",
+    JSON.stringify(customProjectTypes)
+  );
+}, [customProjectTypes]);
+const sector = currentProject.sector;
+
+const allProjectTypes = [
+  ...PROJECT_TYPES[sector],
+  ...customProjectTypes[sector],
+];
 
   const filteredItems = useMemo<RateItem[]>(() => {
     if (category === 'materials') {
@@ -324,18 +354,98 @@ export function EstimatorPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="ptype">
                   Project Type
-                  <span className="ml-1 text-xs text-slate-400 font-normal">(type freely or pick a preset)</span>
+                  <span className="ml-1 text-xs text-slate-400 font-normal">(pick a preset or add a new one)</span>
                 </Label>
-                <datalist id="project-type-list">
-                  {PROJECT_TYPES[sector].map(t => <option key={t} value={t} />)}
-                </datalist>
-                <Input
-                  id="ptype"
-                  list="project-type-list"
-                  value={currentProject.projectType}
-                  onChange={e => updateProject({ projectType: e.target.value })}
-                  placeholder="Type or select project type..."
-                />
+                <div className="space-y-2">
+          
+                  {!useCustomProjectType ? (
+  <Select
+    value={currentProject.projectType}
+    onValueChange={(value) => {
+      if (value === NEW_PROJECT_TYPE) {
+        setUseCustomProjectType(true);
+        setCustomProjectType("");
+      } else {
+        updateProject({ projectType: value });
+      }
+    }}
+  >
+    <SelectTrigger id="ptype">
+      <SelectValue placeholder="Select project type..." />
+    </SelectTrigger>
+
+    <SelectContent position="item-aligned">
+      {allProjectTypes.map(type => (
+        <SelectItem key={type} value={type}>
+          {type}
+        </SelectItem>
+      ))}
+
+      <SelectItem value={NEW_PROJECT_TYPE}>
+        <div className="flex items-center gap-2 text-teal-600 font-medium">
+          <PlusCircle className="h-5 w-5" />
+          <span>Add New Project Type...</span>
+        </div>
+      </SelectItem>
+    </SelectContent>
+  </Select>
+) : (
+  <div className="space-y-2">
+    <Input
+      value={customProjectType}
+      onChange={e => setCustomProjectType(e.target.value)}
+      placeholder="Enter new project type"
+    />
+
+    <div className="flex gap-2">
+      <Button
+        type="button"
+        size="sm"
+        onClick={() => {
+          if (!customProjectType.trim()) return;
+
+          const newType = customProjectType.trim();
+
+if (!newType) {
+  toast.error("Enter a project type");
+  return;
+}
+
+if (allProjectTypes.includes(newType)) {
+  toast.error("Project type already exists");
+ return;
+}
+
+setCustomProjectTypes(prev => ({
+    ...prev,
+    [sector]: [...prev[sector], newType],
+}));
+
+          updateProject({
+            projectType: customProjectType,
+          });
+
+          setUseCustomProjectType(false);
+        }}
+      >
+        Save
+      </Button>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setUseCustomProjectType(false);
+          setCustomProjectType("");
+        }}
+      >
+        Cancel
+      </Button>
+    </div>
+  </div>
+)}
+                </div>
               </div>
               {(sector === 'building' || sector === 'roads' || sector === 'wash') && (
                 <div className="space-y-1.5">

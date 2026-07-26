@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Building2, Truck, Droplets, FileText, Download, Printer, Eye, FileSpreadsheet } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { useApp, formatKES, SECTOR_LABELS } from '../context/AppContext';
@@ -75,76 +75,278 @@ export function BoQPage() {
   };
 
   // ───── Excel export ─────
-  const downloadExcel = () => {
-    const wb = XLSX.utils.book_new();
+  const downloadExcel = async () => {
+  const workbook = new ExcelJS.Workbook();
 
-    // ── Sheet 1: BoQ Detail ──
-    const detailRows: (string | number)[][] = [];
+  workbook.creator = "Construction Estimator System";
+  workbook.created = new Date();
 
-    detailRows.push(['BILL OF QUANTITIES']);
-    detailRows.push([]);
-    detailRows.push(['Project', currentProject.name || 'N/A', '', 'Reference No.', currentProject.referenceNo || 'N/A']);
-    detailRows.push(['Client', currentProject.client || 'N/A', '', 'Prepared By', currentProject.preparedBy || 'N/A']);
-    detailRows.push(['Location', currentProject.location || 'N/A', '', 'Date', displayDate]);
-    detailRows.push(['Sector', SECTOR_LABELS[currentProject.sector], '', 'Project Type', currentProject.projectType || 'N/A']);
-    if (currentProject.notes) detailRows.push(['Notes', currentProject.notes]);
-    detailRows.push([]);
+  const worksheet = workbook.addWorksheet("Bill of Quantities");
 
-    sections.forEach(section => {
-      detailRows.push([section.title.toUpperCase()]);
-      detailRows.push(['Item No.', 'Description', 'Quantity', 'Unit', 'Rate (KES)', 'Amount (KES)', 'Notes']);
-
-      section.items.forEach((item, idx) => {
-        detailRows.push([
-          `${section.code}.${idx + 1}`,
-          item.name,
-          item.quantity,
-          item.unit,
-          item.adjustedRate,
-          item.total,
-          item.isCustom ? 'Custom' : item.rateAdjusted ? 'Rate Adjusted' : '',
-        ]);
-      });
-
-      detailRows.push(['', 'SECTION TOTAL', '', '', '', section.sectionTotal, '']);
-      detailRows.push([]);
-    });
-
-    detailRows.push(['SUMMARY OF COSTS']);
-    detailRows.push(['Subtotal', '', '', '', '', totals.subtotal]);
-    detailRows.push([`Contingency (${currentProject.contingencyPercent}%)`, '', '', '', '', totals.contingency]);
-    detailRows.push([`Contractor Profit & OH (${currentProject.profitMarginPercent}%)`, '', '', '', '', totals.profitMargin]);
-    detailRows.push(['Base Contract Sum', '', '', '', '', totals.baseContractSum]);
-    detailRows.push([`Value Added Tax (VAT) @ ${vatPct}%`, '', '', '', '', totals.vat]);
-    detailRows.push(['GRAND TOTAL (Incl. VAT)', '', '', '', '', totals.grandTotal]);
-
-    const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
-    wsDetail['!cols'] = [{ wch: 14 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 14 }];
-    XLSX.utils.book_append_sheet(wb, wsDetail, 'BoQ Detail');
-
-    // ── Sheet 2: Summary ──
-    const sumRows: (string | number)[][] = [
-      ['COST SUMMARY'],
-      [],
-      ['Description', 'Amount (KES)'],
-      ['Subtotal', totals.subtotal],
-      [`Contingency (${currentProject.contingencyPercent}%)`, totals.contingency],
-      [`Contractor Profit & OH (${currentProject.profitMarginPercent}%)`, totals.profitMargin],
-      ['Base Contract Sum', totals.baseContractSum],
-      [`VAT @ ${vatPct}%`, totals.vat],
-      ['GRAND TOTAL', totals.grandTotal],
-      [],
-      ...sections.map(s => [s.title, s.sectionTotal]),
-    ];
-    const wsSum = XLSX.utils.aoa_to_sheet(sumRows);
-    wsSum['!cols'] = [{ wch: 45 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(wb, wsSum, 'Summary');
-
-    const filename = `BOQ_${(currentProject.name || 'Project').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, filename);
-    toast.success('BoQ exported as Excel (.xlsx)');
+  worksheet.pageSetup = {
+    paperSize: 9,
+    orientation: "landscape",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: {
+      left: 0.4,
+      right: 0.4,
+      top: 0.5,
+      bottom: 0.5,
+      header: 0.2,
+      footer: 0.2,
+    },
   };
 
+  worksheet.columns = [
+    { width: 12 },
+    { width: 45 },
+    { width: 12 },
+    { width: 10 },
+    { width: 18 },
+    { width: 18 },
+    { width: 20 },
+  ];
+const titleRow = worksheet.addRow([
+  "BILL OF QUANTITIES"
+]);
+worksheet.mergeCells(
+  `A${titleRow.number}:G${titleRow.number}`
+);
+titleRow.height = 28;
+
+titleRow.font = {
+  bold: true,
+  size: 18,
+  color: { argb: "FFFFFFFF" }
+};
+
+titleRow.alignment = {
+  horizontal: "center",
+  vertical: "middle"
+};
+
+titleRow.eachCell((cell) => {
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "0F766E" }
+  };
+});
+worksheet.addRow([]);
+worksheet.addRow(["Project", currentProject.name || "N/A"]);
+worksheet.addRow(["Client", currentProject.client || "N/A"]);
+worksheet.addRow(["Location", currentProject.location || "N/A"]);
+worksheet.addRow(["Project Type", currentProject.projectType || "N/A"]);
+worksheet.addRow(["Sector", SECTOR_LABELS[currentProject.sector]]);
+worksheet.addRow(["Prepared By", currentProject.preparedBy || "N/A"]);
+worksheet.addRow(["Reference No.", currentProject.referenceNo || "N/A"]);
+worksheet.addRow(["Date", displayDate]);
+
+worksheet.addRow([]);
+const header = worksheet.addRow([
+  "Item No.",
+  "Description",
+  "Quantity",
+  "Unit",
+  "Rate (KES)",
+  "Amount (KES)",
+  "Remarks"
+]);
+
+header.font = {
+  bold: true,
+  color: { argb: "FFFFFFFF" }
+};
+
+header.fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "1E293B" }
+};
+
+header.alignment = {
+  horizontal: "center",
+  vertical: "middle"
+};
+sections.forEach(section => {
+
+  // Section title
+  const sectionRow = worksheet.addRow([
+    section.code,
+    section.title.toUpperCase()
+  ]);
+
+  sectionRow.font = {
+    bold: true,
+    color: { argb: "FFFFFFFF" }
+  };
+
+  sectionRow.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "0F766E" }
+  };
+
+  // Merge the title across the row
+  worksheet.mergeCells(`B${sectionRow.number}:G${sectionRow.number}`);
+
+  // Items
+  section.items.forEach((item, index) => {
+
+    worksheet.addRow([
+      `${section.code}.${index + 1}`,
+      item.name,
+      item.quantity,
+      item.unit,
+      item.adjustedRate,
+      item.total,
+      item.rateAdjusted ? "Adjusted" : ""
+    ]);
+
+  });
+
+  // Section Total
+  const totalRow = worksheet.addRow([
+    "",
+    "SECTION TOTAL",
+    "",
+    "",
+    "",
+    section.sectionTotal,
+    ""
+  ]);
+
+  totalRow.font = {
+    bold: true
+  };
+
+});
+worksheet.addRow([]);
+
+const summaryTitle = worksheet.addRow(["SUMMARY OF COSTS"]);
+summaryTitle.font = {
+  bold: true,
+  color: { argb: "FFFFFFFF" }
+};
+
+summaryTitle.fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "1E293B" }
+};
+
+worksheet.addRow(["Subtotal", "", "", "", "", totals.subtotal]);
+worksheet.addRow([
+  `Contingency (${currentProject.contingencyPercent}%)`,
+  "",
+  "",
+  "",
+  "",
+  totals.contingency
+]);
+
+worksheet.addRow([
+  `Contractor Profit (${currentProject.profitMarginPercent}%)`,
+  "",
+  "",
+  "",
+  "",
+  totals.profitMargin
+]);
+
+worksheet.addRow([
+  "Base Contract Sum",
+  "",
+  "",
+  "",
+  "",
+  totals.baseContractSum
+]);
+
+worksheet.addRow([
+  `VAT (${vatPct}%)`,
+  "",
+  "",
+  "",
+  "",
+  totals.vat
+]);
+
+const grandTotal = worksheet.addRow([
+  "GRAND TOTAL",
+  "",
+  "",
+  "",
+  "",
+  totals.grandTotal
+]);
+
+grandTotal.font = {
+  bold: true,
+  color: { argb: "FFFFFFFF" }
+};
+
+grandTotal.fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "0F766E" }
+};
+// Format all money columns
+worksheet.eachRow((row, rowNumber) => {
+  if (rowNumber > 10) {
+    row.getCell(5).numFmt = '#,##0.00';
+    row.getCell(6).numFmt = '#,##0.00';
+  }
+});
+
+// Add borders
+worksheet.eachRow((row) => {
+  row.eachCell((cell) => {
+    cell.border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
+    };
+  });
+});
+
+// Freeze header row
+worksheet.views = [
+  {
+    state: "frozen",
+    ySplit: 11,
+  },
+];
+
+// Create Excel file
+const buffer = await workbook.xlsx.writeBuffer();
+
+const blob = new Blob(
+  [buffer],
+  {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  }
+);
+
+const filename =
+  `BOQ_${(currentProject.name || "Project").replace(/\s+/g, "_")}_${new Date()
+    .toISOString()
+    .split("T")[0]}.xlsx`;
+
+const url = window.URL.createObjectURL(blob);
+
+const a = document.createElement("a");
+a.href = url;
+a.download = filename;
+a.click();
+
+window.URL.revokeObjectURL(url);
+
+toast.success("Professional Excel BoQ exported successfully!");
+};
   // ───── TXT download helper ─────
   const downloadTXT = () => {
     const blob = new Blob([generateTXT()], { type: 'text/plain' });
