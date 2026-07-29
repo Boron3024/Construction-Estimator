@@ -29,11 +29,10 @@ import { useApp, formatKES, SECTOR_LABELS, ItemCategory, EstimateItem } from '..
 import { SectorType, BOQ_SECTIONS, RATE_DATABASE, RateItem } from '../data/kenyanRates';
 import { toast } from 'sonner';
 
-const CATEGORY_TABS: { key: ItemCategory; label: string; icon: typeof Package }[] = [
-  { key: 'materials', label: 'Materials', icon: Package },
-  { key: 'labor', label: 'Labour', icon: Users },
-  { key: 'equipment', label: 'Equipment', icon: Wrench },
-];
+const WORK_SECTION_SENTINEL = "__new_work_section__";
+
+
+
 
 const SECTOR_TABS = [
   { key: 'building' as SectorType, label: 'Building', icon: Building2 },
@@ -59,11 +58,51 @@ interface EditingItem {
 }
 
 const NEW_SECTION_SENTINEL = '__new__';
+const NEW_ITEM_SENTINEL = '__new_item__';
+const DEFAULT_WORK_SECTIONS = {
+  building: [
+    "Preliminaries",
+    "Substructure",
+    "Concrete Works",
+    "Reinforcement",
+    "Formwork",
+    "Masonry",
+    "Roofing",
+    "Finishes",
+    "Doors & Windows",
+    "Electrical Works",
+    "Plumbing Works",
+    "External Works",
+  ],
+
+  roads: [
+    "Preliminaries",
+    "Site Clearance",
+    "Earthworks",
+    "Subgrade",
+    "Sub-base",
+    "Base Course",
+    "Surfacing",
+    "Drainage",
+    "Road Furniture",
+  ],
+
+  wash: [
+    "Preliminaries",
+    "Excavation",
+    "Pipework",
+    "Manholes",
+    "Water Storage",
+    "Pumping",
+    "Testing & Commissioning",
+  ],
+};
 
 export function EstimatorPage() {
   const { currentProject, addItem, removeItem, updateItem, updateProject, clearItems, getProjectTotals } = useApp();
 
   // Form state
+  const [selectedWorkSection, setSelectedWorkSection] = useState('');
   const [category, setCategory] = useState<ItemCategory>('materials');
   const [selectedSection, setSelectedSection] = useState('');
   const [useCustomSection, setUseCustomSection] = useState(false);
@@ -71,6 +110,7 @@ export function EstimatorPage() {
   const [customSectionTitle, setCustomSectionTitle] = useState('');
   const [editedSectionTitle, setEditedSectionTitle] = useState('');
   const [selectedItemId, setSelectedItemId] = useState('');
+  const [useCustomItem, setUseCustomItem] = useState(false);
   const [quantity, setQuantity] = useState('');
   const [adjustedRate, setAdjustedRate] = useState('');
   const [description, setDescription] = useState('');
@@ -105,6 +145,24 @@ useEffect(() => {
     JSON.stringify(customProjectTypes)
   );
 }, [customProjectTypes]);
+const [workSections, setWorkSections] = useState<
+  Record<SectorType, string[]>
+>(() => {
+  const saved = localStorage.getItem("workSections");
+
+  if (saved) {
+    return JSON.parse(saved);
+  }
+
+  return DEFAULT_WORK_SECTIONS;
+});
+
+useEffect(() => {
+  localStorage.setItem(
+    "workSections",
+    JSON.stringify(workSections)
+  );
+}, [workSections]);
 const sector = currentProject.sector;
 
 const allProjectTypes = [
@@ -210,10 +268,10 @@ const allProjectTypes = [
         baseRate: rate,
         adjustedRate: rate,
         total: qty * rate,
-        category,
+        category: 'materials',
         sector,
-        boqSectionCode: sCode,
-        boqSectionTitle: sTitle,
+        boqSectionCode: selectedWorkSection,
+        boqSectionTitle: editedSectionTitle,
         isCustom: true,
         rateAdjusted: false,
       });
@@ -309,7 +367,7 @@ const allProjectTypes = [
             </CardHeader>
             <CardContent className="space-y-3 pt-4">
               <div>
-                <Label className="text-xs text-slate-500 mb-1 block">Sector</Label>
+                <Label className="text-xs text-slate-500 mb-1 block">Work Section</Label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {SECTOR_TABS.map(({ key, label, icon: Icon }) => (
                     <button
@@ -549,8 +607,8 @@ setCustomProjectTypes(prev => ({
             </CardHeader>
             <CardContent className="pt-4">
               <form onSubmit={handleAddItem} className="space-y-3">
-                {/* Category Tabs */}
-              
+                {/* Work Section */}
+              {/* Category Tabs */}
 
                 {/* Custom Item Toggle */}
                 <div className="flex items-center justify-between">
@@ -635,7 +693,17 @@ setCustomProjectTypes(prev => ({
                     {/* Item Select */}
                     <div className="space-y-1.5">
                       <Label>Item</Label>
-                      <Select value={selectedItemId} onValueChange={handleItemSelect}>
+                      <Select value={selectedItemId} 
+                      onValueChange={(Value) =>{
+                        if (Value === NEW_ITEM_SENTINEL) {
+                          setUseCustomItem(true);
+                          setSelectedItemId('');
+                        } else {
+                          setUseCustomItem(false);
+                          handleItemSelect(Value);
+                        }
+                      }}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select item..." />
                         </SelectTrigger>
@@ -653,6 +721,12 @@ setCustomProjectTypes(prev => ({
                               </div>
                             </SelectItem>
                           ))}
+                          <SelectItem value={NEW_ITEM_SENTINEL}>
+                            <div className="flex items-center gap-2 text-teal-600 font-medium">
+                              <PlusCircle className="h-3.5 w-3.5" />
+                              <span>Add New Item</span>
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -755,7 +829,64 @@ setCustomProjectTypes(prev => ({
                     )}
                   </div>
                 )}
+{useCustomItem && (
+  <div className="space-y-3 border rounded-lg p-3 bg-teal-50">
 
+    <Label className="font-medium text-teal-700">
+      Add New Item
+    </Label>
+
+    <div className="space-y-2">
+      <Input
+        placeholder="Item Name"
+        value={customName}
+        onChange={(e) => setCustomName(e.target.value)}
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        <Input
+          placeholder="Unit"
+          value={customUnit}
+          onChange={(e) => setCustomUnit(e.target.value)}
+        />
+
+        <Input
+          type="number"
+          placeholder="Rate"
+          value={customRate}
+          onChange={(e) => setCustomRate(e.target.value)}
+        />
+      </div>
+
+      <div className="flex gap-2">
+
+        <Button
+          type="button"
+          size="sm"
+        >
+          Save Item
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setUseCustomItem(false);
+            setCustomName("");
+            setCustomUnit("");
+            setCustomRate("");
+          }}
+        >
+          Cancel
+        </Button>
+
+      </div>
+
+    </div>
+
+  </div>
+)}
                 {/* Description */}
                 <div className="space-y-1.5">
                   <Label>Notes / Spec (optional)</Label>
@@ -818,7 +949,7 @@ setCustomProjectTypes(prev => ({
                 <div className="text-center py-16 text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-3 opacity-20" />
                   <p className="font-medium">No items yet</p>
-                  <p className="text-sm">Use the form on the left to add materials, labour and equipment.</p>
+                  <p className="text-sm">Use the form on the left to add BoQ Work sections and Estimate items.</p>
                 </div>
               ) : (
                 <div className="space-y-5">

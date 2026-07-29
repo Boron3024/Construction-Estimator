@@ -313,13 +313,7 @@ worksheet.eachRow((row) => {
   });
 });
 
-// Freeze header row
-worksheet.views = [
-  {
-    state: "frozen",
-    ySplit: 11,
-  },
-];
+
 
 // Create Excel file
 const buffer = await workbook.xlsx.writeBuffer();
@@ -400,7 +394,7 @@ toast.success("Professional Excel BoQ exported successfully!");
         <div className="text-center py-24 text-muted-foreground">
           <FileText className="h-16 w-16 mx-auto mb-4 opacity-20" />
           <h3 className="text-lg font-semibold text-slate-700 mb-2">No Items in Estimate</h3>
-          <p className="text-sm">Go to the Estimator page to add materials, labour and equipment first.</p>
+          <p className="text-sm">Go to the Estimator page to create BoQ work sections and add estimate items first.</p>
         </div>
       </div>
     );

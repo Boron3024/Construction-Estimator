@@ -51,7 +51,7 @@ const createNewProject = (): Project => ({
   id: Date.now().toString(),
   name: '',
   client: '',
-  location: 'Nairobi, Kenya',
+  location: 'Kenya',
   sector: 'building',
   projectType: 'Residential',
   notes: '',
